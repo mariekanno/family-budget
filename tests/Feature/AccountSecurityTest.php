@@ -30,6 +30,17 @@ class AccountSecurityTest extends TestCase
         $this->assertTrue($u->fresh()->hasVerifiedEmail());
         $this->post('/family',['name'=>'Allowed'])->assertRedirect('/');
     }
+    public function test_account_emails_use_japanese_subjects_and_actions(): void
+    {
+        $u=User::factory()->unverified()->create();
+        $verify=(new VerifyEmail)->toMail($u);
+        $reset=(new ResetPassword('sample-token'))->toMail($u);
+        $this->assertSame('【Family Budget】メールアドレスの確認',$verify->subject);
+        $this->assertSame('メールアドレスを確認する',$verify->actionText);
+        $this->assertSame('【Family Budget】パスワードの再設定',$reset->subject);
+        $this->assertSame('パスワードを再設定する',$reset->actionText);
+        $this->assertStringContainsString('sample-token',$reset->actionUrl);
+    }
     public function test_reset_token_is_single_use(): void
     {
         $u=User::factory()->create();
