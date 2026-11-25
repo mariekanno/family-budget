@@ -42,4 +42,17 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    public function families()
+    {
+        return $this->belongsToMany(Family::class)
+            ->using(FamilyUser::class)
+            ->withPivot('role')
+            ->withTimestamps();
+    }
+
+    public function createdFamilies()
+    {
+        return $this->hasMany(Family::class, 'created_by');
+    }
 }
