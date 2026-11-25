@@ -32,6 +32,8 @@ class BudgetController extends Controller
         $m=$this->member();
         if (!$m) return view('budget.family');
         $month=$this->month($r);
+        $tab=$r->query('tab','family');
+        abort_unless(is_string($tab)&&in_array($tab,['family','personal','entry','records','settings'],true),404);
         $categories=DB::table('categories')->where('family_id',$m->family_id)->orderBy('sort_order')->get();
         $rows=$this->visible($m)->where('transaction_date','like',$month.'-%')
             ->join('categories','categories.id','=','transactions.category_id')
@@ -40,9 +42,10 @@ class BudgetController extends Controller
             ->orderByDesc('transaction_date')->orderByDesc('transactions.id')->get();
         $budgets=DB::table('budgets')->where('family_id',$m->family_id)->where('year',(int)substr($month,0,4))->where('month',(int)substr($month,5,2))->pluck('amount','category_id');
         $family=DB::table('families')->find($m->family_id);
-        return view('budget.home',compact('m','month','categories','rows','budgets','family'));
+        return view('budget.home',compact('m','month','categories','rows','budgets','family','tab'));
     }
     public function register(Request $r) {
+        $r->merge(['email'=>is_string($r->input('email'))?strtolower($r->input('email')):$r->input('email')]);
         $d=$r->validate(['last_name'=>'required|string|max:50','first_name'=>'required|string|max:50','last_name_kana'=>['required','string','max:50','regex:/\A[ァ-ヺー・]+\z/u'],'first_name_kana'=>['required','string','max:50','regex:/\A[ァ-ヺー・]+\z/u'],'email'=>'required|email|max:255|unique:users,email','password'=>'required|string|min:12|max:72|confirmed']);
         $u=User::create(['last_name'=>$d['last_name'],'first_name'=>$d['first_name'],'last_name_kana'=>$d['last_name_kana'],'first_name_kana'=>$d['first_name_kana'],'name'=>$d['last_name'].' '.$d['first_name'],'email'=>strtolower($d['email']),'password'=>Hash::make($d['password'])]);
         Auth::login($u); $r->session()->regenerate(); return redirect('/');
@@ -94,13 +97,13 @@ class BudgetController extends Controller
             'scope'=>'required|in:family,personal','visibility'=>'required|in:shared,private',
         ])->validate();
         $d['type']=DB::table('categories')->where('id',$d['category_id'])->value('type');
-        if($d['scope']==='family')$d['visibility']='shared';
+        if($d['scope']==='family' && $d['visibility']!=='shared') throw ValidationException::withMessages(['visibility'=>'家族の明細は共有を選択してください。']);
         return $d;
     }
     public function store(Request $r) {
         $m=$this->membership();
         DB::table('transactions')->insert($this->data($r->all(),$m)+['family_id'=>$m->family_id,'user_id'=>Auth::id(),'created_at'=>now(),'updated_at'=>now()]);
-        return back()->with('notice','登録しました。');
+        return redirect()->route('home',['tab'=>$r->input('scope')==='personal'?'personal':'family','month'=>substr($r->input('transaction_date'),0,7)])->with('notice','登録しました。');
     }
     private function owned($m,$id) {return DB::table('transactions')->where('family_id',$m->family_id)->where('user_id',Auth::id())->where('id',$id);}
     public function update(Request $r,$id) {
@@ -127,7 +130,7 @@ class BudgetController extends Controller
                 $safe=fn($s)=>preg_match('/^[\s]*[=+\-@]/u',(string)$s)?"'".$s:$s;
                 fputcsv($f,[$t->transaction_date,$safe($t->category),$t->amount,$safe($t->description),$t->scope,$t->visibility,$safe($t->memo)]);
             } fclose($f);
-        },'family-budget-'.$month.'.csv',['Content-Type'=>'text/csv; charset=UTF-8']);
+        },'family-budget-'.$month.'.csv',['Content-Type'=>'text/csv; charset=UTF-8','Cache-Control'=>'no-store, private']);
     }
     public function import(Request $r) {
         $m=$this->membership(); $r->validate(['csv'=>'required|file|max:1024']);
