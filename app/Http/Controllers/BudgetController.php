@@ -29,6 +29,7 @@ class BudgetController extends Controller
     }
     public function home(Request $r) {
         if (!Auth::check()) return view('budget.auth');
+        if (!Auth::user()->hasVerifiedEmail()) return redirect()->route('verification.notice');
         $m=$this->member();
         if (!$m) return view('budget.family');
         $month=$this->month($r);
@@ -48,7 +49,9 @@ class BudgetController extends Controller
         $r->merge(['email'=>is_string($r->input('email'))?strtolower($r->input('email')):$r->input('email')]);
         $d=$r->validate(['last_name'=>'required|string|max:50','first_name'=>'required|string|max:50','last_name_kana'=>['required','string','max:50','regex:/\A[ァ-ヺー・]+\z/u'],'first_name_kana'=>['required','string','max:50','regex:/\A[ァ-ヺー・]+\z/u'],'email'=>'required|email|max:255|unique:users,email','password'=>'required|string|min:12|max:72|confirmed']);
         $u=User::create(['last_name'=>$d['last_name'],'first_name'=>$d['first_name'],'last_name_kana'=>$d['last_name_kana'],'first_name_kana'=>$d['first_name_kana'],'name'=>$d['last_name'].' '.$d['first_name'],'email'=>strtolower($d['email']),'password'=>Hash::make($d['password'])]);
-        Auth::login($u); $r->session()->regenerate(); return redirect('/');
+        Auth::login($u); $r->session()->regenerate();
+        try { $u->sendEmailVerificationNotification(); } catch (\Throwable $e) { report($e); return redirect()->route('verification.notice')->withErrors(['email'=>'確認メールを送信できませんでした。再送してください。']); }
+        return redirect('/');
     }
     public function login(Request $r) {
         $d=$r->validate(['email'=>'required|email','password'=>'required|string']);
