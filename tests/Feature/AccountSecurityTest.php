@@ -22,6 +22,9 @@ class AccountSecurityTest extends TestCase
         $this->get('/export')->assertRedirect(route('verification.notice'));
         $this->post(route('verification.send'))->assertRedirect();
         Notification::assertSentTo($u,VerifyEmail::class);
+        $this->post(route('verification.send'))->assertRedirect();
+        $this->post(route('verification.send'))->assertRedirect();
+        $this->post(route('verification.send'))->assertStatus(429);
         $link=URL::temporarySignedRoute('verification.verify',now()->addHour(),['id'=>$u->id,'hash'=>sha1($u->email)]);
         $this->get($link)->assertRedirect('/');
         $this->assertTrue($u->fresh()->hasVerifiedEmail());
