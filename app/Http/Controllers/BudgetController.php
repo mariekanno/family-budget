@@ -43,8 +43,8 @@ class BudgetController extends Controller
         return view('budget.home',compact('m','month','categories','rows','budgets','family'));
     }
     public function register(Request $r) {
-        $d=$r->validate(['name'=>'required|string|max:100','email'=>'required|email|max:255|unique:users,email','password'=>'required|string|min:12|max:72|confirmed']);
-        $u=User::create(['name'=>$d['name'],'email'=>strtolower($d['email']),'password'=>Hash::make($d['password'])]);
+        $d=$r->validate(['last_name'=>'required|string|max:50','first_name'=>'required|string|max:50','email'=>'required|email|max:255|unique:users,email','password'=>'required|string|min:12|max:72|confirmed']);
+        $u=User::create(['last_name'=>$d['last_name'],'first_name'=>$d['first_name'],'name'=>$d['last_name'].' '.$d['first_name'],'email'=>strtolower($d['email']),'password'=>Hash::make($d['password'])]);
         Auth::login($u); $r->session()->regenerate(); return redirect('/');
     }
     public function login(Request $r) {
