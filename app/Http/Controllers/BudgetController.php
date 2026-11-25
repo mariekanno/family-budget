@@ -43,8 +43,8 @@ class BudgetController extends Controller
         return view('budget.home',compact('m','month','categories','rows','budgets','family'));
     }
     public function register(Request $r) {
-        $d=$r->validate(['last_name'=>'required|string|max:50','first_name'=>'required|string|max:50','email'=>'required|email|max:255|unique:users,email','password'=>'required|string|min:12|max:72|confirmed']);
-        $u=User::create(['last_name'=>$d['last_name'],'first_name'=>$d['first_name'],'name'=>$d['last_name'].' '.$d['first_name'],'email'=>strtolower($d['email']),'password'=>Hash::make($d['password'])]);
+        $d=$r->validate(['last_name'=>'required|string|max:50','first_name'=>'required|string|max:50','last_name_kana'=>['required','string','max:50','regex:/\A[ァ-ヺー・]+\z/u'],'first_name_kana'=>['required','string','max:50','regex:/\A[ァ-ヺー・]+\z/u'],'email'=>'required|email|max:255|unique:users,email','password'=>'required|string|min:12|max:72|confirmed']);
+        $u=User::create(['last_name'=>$d['last_name'],'first_name'=>$d['first_name'],'last_name_kana'=>$d['last_name_kana'],'first_name_kana'=>$d['first_name_kana'],'name'=>$d['last_name'].' '.$d['first_name'],'email'=>strtolower($d['email']),'password'=>Hash::make($d['password'])]);
         Auth::login($u); $r->session()->regenerate(); return redirect('/');
     }
     public function login(Request $r) {
